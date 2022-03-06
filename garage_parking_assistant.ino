@@ -1,217 +1,168 @@
-/*
-* Garage Parking Sensor - Published By Bob Torrence
-*/
+/* Garage Parking Sensor
+ *
+ * Original code by Bob Torrence -- https://create.arduino.cc/projecthub/Bcjams/garage-parking-assistant-11446b
+ * Major revision by galmiklos (added eeprom storage for stop distance set by button, added sleep feature, optimized code for any # LEDs)
+ * Additional optimizations/features by jeboo
+ * 
+ * Version history:
+ * 0.5 -- Switched timer library to MillisTimer (galmiklos code appeared to use customized/unavailable library)
+ *        Fixed push-button setting for stopdistance: can still specify static value; setting via button no longer requires a reboot
+ *        Added option (SLEEP_POLLDELAY) to poll less often once in sleep mode
+ *        Added option for independent left and right LED strip control; allows differing colors, animations, etc.
+ */
+ 
 #include <FastLED.h>
 #include <QuickStats.h>
-QuickStats stats; //initialize an instance of this class
-// defining the pins
-#define LED_PIN     7
-#define NUM_LEDS    15
-const int trigPin = 9;
-const int echoPin = 10;
-// defining variables
-CRGB leds[NUM_LEDS];
-float duration;
-float durationarray[15];
-int distance;
-int stopdistance=115; //parking position from sensor (CENTIMETERS)
-int startdistance=400; //distance from sensor to begin scan as car pulls in(CENTIMETERS) 
-int increment=((startdistance-stopdistance)/15);
-void setup() {
-pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
-pinMode(echoPin, INPUT); // Sets the echoPin as an Input
-FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, NUM_LEDS);
-Serial.begin(9600); // Starts the serial communication
-}
-void loop() {
-  for (int i=0;i<=14;i++){
-// Clears the trigPin
-digitalWrite(trigPin, LOW);
-delayMicroseconds(2);
-// Sets the trigPin on HIGH state for 10 micro seconds
-digitalWrite(trigPin, HIGH);
-delayMicroseconds(10);
-digitalWrite(trigPin, LOW);
-// Reads the echoPin, returns the sound wave travel time in microseconds
-durationarray[i] = pulseIn(echoPin, HIGH);
-distance= durationarray[i]*0.034/2;
-Serial.print(distance);
-Serial.print(" ");
-  }
- duration = (stats.median(durationarray,15));
-// Calculating the distance
-distance= duration*0.034/2;
-// Prints the distance on the Serial Monitor
-Serial.print("Distance: ");
-Serial.println(distance);
-  
-if (distance<stopdistance){
-  for (int i = 0; i <= 14; i++) {
-    leds[i] = CRGB ( 255, 0, 0);
-    FastLED.show();
-     }
-}
-else
-if (distance<stopdistance+increment){
-  for (int i = 1; i <= 14; i++) {
-    leds[i] = CRGB ( 0, 0, 0);
-  }
- for (int i = 0; i <= 0; i++) {
-    leds[i] = CRGB ( 255, 255, 0);
-  }
-  FastLED.show();
-  delay(50);
-}
-else
-if (distance<stopdistance+increment*2){
-  for (int i = 2; i <= 14; i++) {
-    leds[i] = CRGB ( 0, 0, 0);
-  }
- for (int i = 0; i <= 1; i++) {
-    leds[i] = CRGB ( 255, 255, 0);
-  }
-  FastLED.show();
-  delay(50);
-}
-else
-if (distance<stopdistance+increment*3){
-   for (int i = 3; i <= 14; i++) {
-    leds[i] = CRGB ( 0, 0, 0);
-  }
- for (int i = 0; i <= 2; i++) {
-    leds[i] = CRGB ( 255, 255, 0);
-  }
-  FastLED.show();
-  delay(50);
-}
-else
-if (distance<stopdistance+increment*4){
-   for (int i = 4; i <= 14; i++) {
-    leds[i] = CRGB ( 0, 0, 0);
-  }
- for (int i = 0; i <= 3; i++) {
-    leds[i] = CRGB ( 0, 255,0);
-  }
-  FastLED.show();
-  delay(50);
-}
-else
-if (distance<stopdistance+increment*5){
-   for (int i = 5; i <= 14; i++) {
-    leds[i] = CRGB ( 0, 0, 0);
-  }
- for (int i = 0; i <= 4; i++) {
-  leds[i] = CRGB ( 0, 255,0);
-  }
-  FastLED.show();
-  delay(50);
-}
-else
-if (distance<stopdistance+increment*6){
-   for (int i = 6; i <= 14; i++) {
-    leds[i] = CRGB ( 0, 0, 0);
-  }
- for (int i = 0; i <= 5; i++) {
-   leds[i] = CRGB ( 0, 255,0);
-  }
-  FastLED.show();
-  delay(50);
-}
-else
-if (distance<stopdistance+increment*7){
-   for (int i = 7; i <= 14; i++) {
-    leds[i] = CRGB ( 0, 0, 0);
-  }
- for (int i = 0; i <= 6; i++) {
-   leds[i] = CRGB ( 0, 255,0);
-  }
-  FastLED.show();
-  delay(50);
-}
-else
-if (distance<stopdistance+increment*8){
-   for (int i = 8; i <= 14; i++) {
-    leds[i] = CRGB ( 0, 0, 0);
-  }
- for (int i = 0; i <= 7; i++) {
-    leds[i] = CRGB ( 0, 255,0);
-  }
-  FastLED.show();
-  delay(50);
-}
-else
-if (distance<stopdistance+increment*9){
-   for (int i = 9; i <= 14; i++) {
-    leds[i] = CRGB ( 0, 0, 0);
-  }
- for (int i = 0; i <= 8; i++) {
-   leds[i] = CRGB ( 0, 255,0);
-  }
-  FastLED.show();
-  delay(50);
-}
-else
-if (distance<stopdistance+increment*10){
-   for (int i = 10; i <= 14; i++) {
-    leds[i] = CRGB ( 0, 0, 0);
-  }
- for (int i = 0; i <= 9; i++) {
-    leds[i] = CRGB ( 0, 255,0);
-  }
-  FastLED.show();
-  delay(50);
-}
-else
-if (distance<stopdistance+increment*11){
-   for (int i = 11; i <= 14; i++) {
-    leds[i] = CRGB ( 0, 0, 0);
-  }
- for (int i = 0; i <= 10; i++) {
-    leds[i] = CRGB ( 0, 255,0);
-  }
-  FastLED.show();
-  delay(50);
-}
-else
-if (distance<stopdistance+increment*12){
-   for (int i = 12; i <= 14; i++) {
-    leds[i] = CRGB ( 0, 0, 0);
-  }
- for (int i = 0; i <= 11; i++) {
-    leds[i] = CRGB ( 0, 255,0);
-  }
-  FastLED.show();
-  delay(50);
-}
-else
+#include <MillisTimer.h>
 
-if (distance<stopdistance+increment*13){
-   for (int i = 13; i <= 14; i++) {
-    leds[i] = CRGB ( 0, 0, 0);
-  }
- for (int i = 0; i <= 12; i++) {
-   leds[i] = CRGB ( 0, 255,0);
+// defining the parameters/layout
+#define NUM_LEDS            15      // # LEDs on each side
+#define AMBER_LEDS          4       // number of amber LEDs when car is close to stop
+#define DISTANCE_TOLERANCE  3       // tolerance to determine if the car is stopped (CENTIMETERS)
+#define LED_TIMEOUT         60000   // in milliseconds, time before lights go out (sleep) once car stopped
+#define SLEEP_POLLDELAY     1000    // in milliseconds, delay for each main loop iteration while in sleep mode
+
+// defining the pins
+#define BUTTON_PIN          6       // push-button for setting stopdistance (optional)
+#define LED_PIN_L           7       // left-sided LEDs (or both sides if mirror_LEDs set to true)
+#define LED_PIN_R           8       // right-sided LEDs (optional), implemented by setting mirror_LEDs below to false
+#define TRIG_PIN            9
+#define ECHO_PIN            10
+
+// defined variables
+int startdistance = 395;            // distance from sensor to begin scan as car pulls in (CENTIMETERS); HC-SR04 max distance is 400CM
+int stopdistance = 0;               // parking position from sensor (CENTIMETERS); either specify here, or leave as zero and set dynamically with push-button
+const int durationarraysz = 15;     // size of array for distance polling
+bool mirror_LEDs = true;            // true = L + R LEDs controlled by pin 7 (mirrored, as in stock project)
+
+// variables
+QuickStats stats;
+CRGB leds_L[NUM_LEDS], leds_R[NUM_LEDS];
+float duration, durationarray[durationarraysz];
+int distance, previous_distance, increment, i;
+uint16_t stopdistance_ee EEMEM;
+MillisTimer timer = MillisTimer(LED_TIMEOUT);
+bool LED_sleep;
+
+void sleepmode_start(MillisTimer &mt)
+{
+  for (i = 0; i < NUM_LEDS; i++)
+  {
+      leds_L[i] = leds_R[i] = CRGB::Black;
   }
   FastLED.show();
-  delay(50);
+
+  timer.reset();
+  LED_sleep = true;
 }
-else
-if (distance<stopdistance+increment*14){
-   for (int i = 14; i <= 14; i++) {
-    leds[i] = CRGB ( 0, 0, 0);
+
+void setup()
+{
+  LED_sleep = false;
+  if (!stopdistance)
+  {
+    stopdistance = eeprom_read_word(&stopdistance_ee);
   }
- for (int i = 0; i <= 13; i++) {
-   leds[i] = CRGB ( 0, 255,0);
+  increment = (startdistance - stopdistance)/NUM_LEDS;
+  
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  FastLED.addLeds<WS2812, LED_PIN_L, GRB>(leds_L, NUM_LEDS);
+  if (!mirror_LEDs) 
+  {
+    FastLED.addLeds<WS2812, LED_PIN_R, GRB>(leds_R, NUM_LEDS);
   }
-  FastLED.show();
-  delay(50);
+  
+  timer.setInterval(LED_TIMEOUT);
+  timer.expiredHandler(sleepmode_start);
+  timer.setRepeats(0);
+
+  Serial.begin(9600);
 }
-else
-if (distance>=stopdistance+increment*14){
- for (int i = 0; i <= 14; i++) {
-   leds[i] = CRGB ( 0, 255,0);
+
+void loop()
+{
+  timer.run();
+  for (i = 0; i < durationarraysz; i++)
+  {
+    // Clears the trigPin
+    digitalWrite(TRIG_PIN, LOW);
+    delayMicroseconds(2);
+    // Sets the trigPin on HIGH state for 10 micro seconds
+    digitalWrite(TRIG_PIN, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TRIG_PIN, LOW);
+    // Reads the echoPin, returns the sound wave travel time in microseconds
+    durationarray[i] = pulseIn(ECHO_PIN, HIGH);
   }
-  FastLED.show();
-  delay(50);
-}
+  
+  duration = stats.median(durationarray, durationarraysz);
+  // Calculating the distance
+  distance = duration*0.034/2;
+
+  //Serial.print("stopdistance: "); Serial.println(stopdistance);
+  //Serial.print("distance: "); Serial.println(distance);
+  //Serial.print("previous_distance: "); Serial.println(previous_distance);
+
+  // check if distance changed is within tolerance
+  if (abs(distance - previous_distance) < DISTANCE_TOLERANCE)
+  {      
+    if (!timer.isRunning() && !LED_sleep)
+    {
+      timer.start();
+    }
+  }
+  else // movement beyond threshold, stop timer and turn off sleep
+  {
+    previous_distance = distance;
+    timer.reset();
+    LED_sleep = false;
+  }
+
+  // check button state
+  if (digitalRead(BUTTON_PIN) == LOW)
+  {
+    stopdistance = distance;
+    eeprom_write_word(&stopdistance_ee, stopdistance);
+    increment = (startdistance - stopdistance)/NUM_LEDS;
+  }
+
+  if (!LED_sleep)
+  {
+    if (distance > startdistance)
+    {
+      for (i = 0; i < NUM_LEDS; i++)
+      {
+        leds_L[i] = leds_R[i] = CRGB::Black;
+      }    
+    }
+    else if (distance <= stopdistance)
+    {
+      for (i = 0; i < NUM_LEDS; i++)
+      {
+        leds_L[i] = leds_R[i] = CRGB::Red;
+      }
+    }
+    else
+    {
+      for (i = 0; i < NUM_LEDS; i++)
+      {
+        if (distance > (stopdistance+increment*i))
+        {
+          leds_L[i] = leds_R[i] = (i < AMBER_LEDS) ? CRGB::Orange : CRGB::Green;
+        }
+        else
+        {
+          leds_L[i] = leds_R[i] = CRGB::Black;
+        }
+      }
+    }    
+    FastLED.show();
+    delay(50);
+  }  
+  else
+  {
+    delay(SLEEP_POLLDELAY);
+  }
 }
