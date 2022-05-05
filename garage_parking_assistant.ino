@@ -9,11 +9,14 @@
  *        Fixed push-button setting for stopdistance: can still specify static value; setting via button no longer requires a reboot
  *        Added option (SLEEP_POLLDELAY) to poll less often once in sleep mode
  *        Added option for independent left and right LED strip control; allows differing colors, animations, etc.
+ *
+ * 0.6 -- Added EEPROM dependency and switched to QuickMedianLib for compatibility with megaAVR boards (tested on Nano Every).
  */
  
 #include <FastLED.h>
-#include <QuickStats.h>
 #include <MillisTimer.h>
+#include <EEPROM.h>
+#include <QuickMedianLib.h>
 
 // defining the parameters/layout
 #define NUM_LEDS            15      // # LEDs on each side
@@ -36,7 +39,6 @@ const int durationarraysz = 15;     // size of array for distance polling
 bool mirror_LEDs = true;            // true = L + R LEDs controlled by pin 7 (mirrored, as in stock project)
 
 // variables
-QuickStats stats;
 CRGB leds_L[NUM_LEDS], leds_R[NUM_LEDS];
 float duration, durationarray[durationarraysz];
 int distance, previous_distance, increment, i;
@@ -97,7 +99,7 @@ void loop()
     durationarray[i] = pulseIn(ECHO_PIN, HIGH);
   }
   
-  duration = stats.median(durationarray, durationarraysz);
+  duration = QuickMedian<float>::GetMedian(durationarray, durationarraysz);
   // Calculating the distance
   distance = duration*0.034/2;
 
