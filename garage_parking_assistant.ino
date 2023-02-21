@@ -11,6 +11,8 @@
  *        Added option for independent left and right LED strip control; allows differing colors, animations, etc.
  *
  * 0.6 -- Added EEPROM dependency and switched to QuickMedianLib for compatibility with megaAVR boards (tested on Nano Every).
+ * 
+ * 0.7 -- Cosmetic bugfix: Changed amber LED behavior to only show when car is close to stop.
  */
  
 #include <FastLED.h>
@@ -152,7 +154,7 @@ void loop()
       {
         if (distance > (stopdistance+increment*i))
         {
-          leds_L[i] = leds_R[i] = (i < AMBER_LEDS) ? CRGB::Orange : CRGB::Green;
+          leds_L[i] = leds_R[i] = (distance < (stopdistance+(AMBER_LEDS+1)*increment)) ? CRGB::Orange : CRGB::Green;
         }
         else
         {
