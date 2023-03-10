@@ -13,40 +13,46 @@
  * 0.6 -- Added EEPROM dependency and switched to QuickMedianLib for compatibility with megaAVR boards (tested on Nano Every).
  * 
  * 0.7 -- Cosmetic bugfix: Changed amber LED behavior to only show when car is close to stop.
+ * 
+ * 0.8 -- Changed polling code to NewPing library. This library fixes blocking that may occur on some HC-SR04s when the distance
+ *        is beyond 400cm. NewPing also has built-in iterative polling and median calculation, simplifying the code greatly.
  */
  
 #include <FastLED.h>
 #include <MillisTimer.h>
 #include <EEPROM.h>
-#include <QuickMedianLib.h>
+#include <NewPing.h>
 
 // defining the parameters/layout
-#define NUM_LEDS            15      // # LEDs on each side
-#define AMBER_LEDS          4       // number of amber LEDs when car is close to stop
-#define DISTANCE_TOLERANCE  3       // tolerance to determine if the car is stopped (CENTIMETERS)
-#define LED_TIMEOUT         60000   // in milliseconds, time before lights go out (sleep) once car stopped
-#define SLEEP_POLLDELAY     1000    // in milliseconds, delay for each main loop iteration while in sleep mode
+#define NUM_LEDS                30      // # LEDs on each side
+#define AMBER_LEDS              5       // number of amber LEDs when car is close to stop
+#define DISTANCE_TOLERANCE      5       // tolerance to determine if the car is stopped (CENTIMETERS)
+#define LED_TIMEOUT             60000   // in milliseconds, time before lights go out (sleep) once car stopped
+#define SLEEP_POLLDELAY         1000    // in milliseconds, delay for each main loop iteration while in sleep mode
 
-// defining the pins
-#define BUTTON_PIN          6       // push-button for setting stopdistance (optional)
-#define LED_PIN_L           7       // left-sided LEDs (or both sides if mirror_LEDs set to true)
-#define LED_PIN_R           8       // right-sided LEDs (optional), implemented by setting mirror_LEDs below to false
-#define TRIG_PIN            9
-#define ECHO_PIN            10
+// defining the hardware
+#define BUTTON_PIN				6       // push-button for setting stopdistance (optional)
+#define LED_PIN_L				7       // left-sided LEDs (or both sides if mirror_LEDs set to true)
+#define LED_PIN_R				8       // right-sided LEDs (optional), implemented by setting mirror_LEDs below to false
+#define TRIG_PIN				9
+#define ECHO_PIN				10
+#define MAX_DISTANCE			400     // HC-SR04 max distance is 400CM
 
 // defined variables
-int startdistance = 395;            // distance from sensor to begin scan as car pulls in (CENTIMETERS); HC-SR04 max distance is 400CM
-int stopdistance = 0;               // parking position from sensor (CENTIMETERS); either specify here, or leave as zero and set dynamically with push-button
-const int durationarraysz = 15;     // size of array for distance polling
-bool mirror_LEDs = true;            // true = L + R LEDs controlled by pin 7 (mirrored, as in stock project)
+const int startdistance =       50;    // distance from sensor to begin scan as car pulls in (CENTIMETERS)
+int stopdistance =              10;     // parking position from sensor (CENTIMETERS); either specify here, or leave as zero and set dynamically with push-button
+const int durationarraysz =     15;     // number of measurements to take per cycle
+bool mirror_LEDs =              true;   // true = L + R LEDs controlled by pin 7 (mirrored, as in stock project)
 
 // variables
 CRGB leds_L[NUM_LEDS], leds_R[NUM_LEDS];
-float duration, durationarray[durationarraysz];
 int distance, previous_distance, increment, i;
+unsigned int uS;
 uint16_t stopdistance_ee EEMEM;
 MillisTimer timer = MillisTimer(LED_TIMEOUT);
 bool LED_sleep;
+
+NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
 
 void sleepmode_start(MillisTimer &mt)
 {
@@ -70,8 +76,6 @@ void setup()
   increment = (startdistance - stopdistance)/NUM_LEDS;
   
   pinMode(BUTTON_PIN, INPUT_PULLUP);
-  pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);
   FastLED.addLeds<WS2812, LED_PIN_L, GRB>(leds_L, NUM_LEDS);
   if (!mirror_LEDs) 
   {
@@ -88,23 +92,10 @@ void setup()
 void loop()
 {
   timer.run();
-  for (i = 0; i < durationarraysz; i++)
-  {
-    // Clears the trigPin
-    digitalWrite(TRIG_PIN, LOW);
-    delayMicroseconds(2);
-    // Sets the trigPin on HIGH state for 10 micro seconds
-    digitalWrite(TRIG_PIN, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(TRIG_PIN, LOW);
-    // Reads the echoPin, returns the sound wave travel time in microseconds
-    durationarray[i] = pulseIn(ECHO_PIN, HIGH);
-  }
-  
-  duration = QuickMedian<float>::GetMedian(durationarray, durationarraysz);
-  // Calculating the distance
-  distance = duration*0.034/2;
 
+  uS = sonar.ping_median(durationarraysz, MAX_DISTANCE);
+  distance = sonar.convert_cm(uS);
+  
   //Serial.print("stopdistance: "); Serial.println(stopdistance);
   //Serial.print("distance: "); Serial.println(distance);
   //Serial.print("previous_distance: "); Serial.println(previous_distance);
@@ -134,6 +125,7 @@ void loop()
 
   if (!LED_sleep)
   {
+    // turn off lights when beyond startdistance
     if (distance > startdistance)
     {
       for (i = 0; i < NUM_LEDS; i++)
@@ -141,16 +133,16 @@ void loop()
         leds_L[i] = leds_R[i] = CRGB::Black;
       }    
     }
-    else if (distance <= stopdistance)
+    else if (distance <= stopdistance) // either past stopdistance or limit of sensor (reported as distance=0)
     {
       for (i = 0; i < NUM_LEDS; i++)
       {
-        leds_L[i] = leds_R[i] = CRGB::Red;
+        leds_L[i] = leds_R[i] = distance ? CRGB::Red : CRGB::Black;
       }
     }
     else
     {
-      for (i = 0; i < NUM_LEDS; i++)
+      for (i = 0; i < NUM_LEDS; i++) // fill entire LED array with orange/green/black
       {
         if (distance > (stopdistance+increment*i))
         {
@@ -168,5 +160,6 @@ void loop()
   else
   {
     delay(SLEEP_POLLDELAY);
+    //Serial.println("Sleep");
   }
 }
