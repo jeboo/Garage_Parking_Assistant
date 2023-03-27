@@ -16,6 +16,8 @@
  * 
  * 0.8 -- Changed polling code to NewPing library. This library fixes blocking that may occur on some HC-SR04s when the distance
  *        is beyond 400cm. NewPing also has built-in iterative polling and median calculation, simplifying the code greatly.
+ *
+ * 0.9 -- Fixed amber-to-green transition bug.
  */
  
 #include <FastLED.h>
@@ -31,12 +33,12 @@
 #define SLEEP_POLLDELAY         1000    // in milliseconds, delay for each main loop iteration while in sleep mode
 
 // defining the hardware
-#define BUTTON_PIN				6       // push-button for setting stopdistance (optional)
-#define LED_PIN_L				7       // left-sided LEDs (or both sides if mirror_LEDs set to true)
-#define LED_PIN_R				8       // right-sided LEDs (optional), implemented by setting mirror_LEDs below to false
-#define TRIG_PIN				9
-#define ECHO_PIN				10
-#define MAX_DISTANCE			400     // HC-SR04 max distance is 400CM
+#define BUTTON_PIN              6       // push-button for setting stopdistance (optional)
+#define LED_PIN_L               7       // left-sided LEDs (or both sides if mirror_LEDs set to true)
+#define LED_PIN_R               8       // right-sided LEDs (optional), implemented by setting mirror_LEDs below to false
+#define TRIG_PIN                9
+#define ECHO_PIN                10
+#define MAX_DISTANCE            400     // HC-SR04 max distance is 400CM
 
 // defined variables
 const int startdistance =       50;    // distance from sensor to begin scan as car pulls in (CENTIMETERS)
@@ -146,7 +148,7 @@ void loop()
       {
         if (distance > (stopdistance+increment*i))
         {
-          leds_L[i] = leds_R[i] = (distance < (stopdistance+(AMBER_LEDS+1)*increment)) ? CRGB::Orange : CRGB::Green;
+          leds_L[i] = leds_R[i] = (distance <= (stopdistance+(AMBER_LEDS)*increment)) ? CRGB::Orange : CRGB::Green;
         }
         else
         {
