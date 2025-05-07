@@ -18,6 +18,8 @@
  *        is beyond 400cm. NewPing also has built-in iterative polling and median calculation, simplifying the code greatly.
  *
  * 0.9 -- Fixed amber-to-green transition bug.
+  *
+ * 0.10 - Fixed lights not showing in mirrored mode; added version code upon power cycle. LEDs will show White = major, Red = minor version for 3s.
  */
  
 #include <FastLED.h>
@@ -40,11 +42,15 @@
 #define ECHO_PIN                10
 #define MAX_DISTANCE            400     // HC-SR04 max distance is 400CM
 
+// version
+#define MAJOR_VER               1
+#define MINOR_VER               10
+
 // defined variables
-const int startdistance =       50;    // distance from sensor to begin scan as car pulls in (CENTIMETERS)
-int stopdistance =              10;     // parking position from sensor (CENTIMETERS); either specify here, or leave as zero and set dynamically with push-button
-const int durationarraysz =     15;     // number of measurements to take per cycle
-bool mirror_LEDs =              true;   // true = L + R LEDs controlled by pin 7 (mirrored, as in stock project)
+const int startdistance =       400;    // distance from sensor to begin scan as car pulls in (CENTIMETERS)
+int stopdistance =              10;      // parking position from sensor (CENTIMETERS); either specify here, or leave as zero and set dynamically with push-button
+const int durationarraysz =     20;     // number of measurements to take per cycle
+const bool mirror_LEDs =        true;   // true = L + R LEDs controlled by LED_PIN_L (mirrored, as in stock project)
 
 // variables
 CRGB leds_L[NUM_LEDS], leds_R[NUM_LEDS];
@@ -70,7 +76,9 @@ void sleepmode_start(MillisTimer &mt)
 
 void setup()
 {
+  CRGB temp_color;
   LED_sleep = false;
+
   if (!stopdistance)
   {
     stopdistance = eeprom_read_word(&stopdistance_ee);
@@ -78,12 +86,31 @@ void setup()
   increment = (startdistance - stopdistance)/NUM_LEDS;
   
   pinMode(BUTTON_PIN, INPUT_PULLUP);
+
   FastLED.addLeds<WS2812, LED_PIN_L, GRB>(leds_L, NUM_LEDS);
-  if (!mirror_LEDs) 
-  {
-    FastLED.addLeds<WS2812, LED_PIN_R, GRB>(leds_R, NUM_LEDS);
-  }
+  FastLED.addLeds<WS2812, mirror_LEDs ? LED_PIN_L : LED_PIN_R, GRB>(leds_R, NUM_LEDS);
   
+ // flash major/minor version for 3s
+  for(i = 0; i < NUM_LEDS; i++)
+  {
+      temp_color = CRGB::Black;
+
+      if (i < (MAJOR_VER)) { temp_color = CRGB::White; }
+      else if ((i > (MAJOR_VER) && (i < (MAJOR_VER + 1 + MINOR_VER)))) { temp_color = CRGB::Red; }
+
+      leds_L[i] = leds_R[i] = temp_color;
+  }
+
+  FastLED.show();
+
+  delay(3000);
+
+  // clear LEDs  
+  for(i = 0; i < NUM_LEDS; i++)
+        leds_L[i] = leds_R[i] = CRGB::Black;
+  
+  FastLED.show();
+
   timer.setInterval(LED_TIMEOUT);
   timer.expiredHandler(sleepmode_start);
   timer.setRepeats(0);
